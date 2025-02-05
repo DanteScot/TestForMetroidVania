@@ -91,8 +91,8 @@ public class PlayerMovement : MonoBehaviour
     Vector3 _targetVelocity;
     Vector3 _velocityChange;
     Vector3 _zeroVelocity;
-    Vector3 _rightVelocity;
-    Vector3 _leftVelocity;
+    // Vector3 _rightVelocity;
+    // Vector3 _leftVelocity;
     #endregion
 
     private bool IsGrounded { get => Physics.CheckBox(_checks.groundCheck.position, _checks.groundCheckSize, Quaternion.identity, _checks.groundLayer); }
@@ -113,8 +113,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void Start() {
         _zeroVelocity = Vector3.zero;
-        _rightVelocity = -_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed;
-        _leftVelocity = _splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed;
+        // _rightVelocity = -_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed;
+        // _leftVelocity = _splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed;
 
         playerStats.Recalculate();
         _checks.CorrectHalfSize();
@@ -134,17 +134,13 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate(){
         #region Horizontal Movement
-        _targetVelocity = moveInput.x > 0 ? -_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed :
-                          moveInput.x < 0 ? _splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed : _zeroVelocity;
 
-        /* _velocityChange = playerStats.horizontalAcceleration * (_targetVelocity - rb.linearVelocity); */
-        /* _velocityChange = Vector3.Lerp(rb.linearVelocity, _targetVelocity, playerStats.horizontalAcceleration); */
-        /* _velocityChange = playerStats.horizontalAcceleration * _targetVelocity; */
-        // _velocityChange = playerStats.horizontalAcceleration * (_targetVelocity - rb.linearVelocity);
-        // rb.AddForce(_splineProjector.result.forward * _speedMultiplier , ForceMode.Acceleration);
-
+        _targetVelocity = moveInput.x > 0 ? _splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed :
+                         moveInput.x < 0 ? -_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed : _zeroVelocity;
 
         _velocityChange = playerStats.horizontalAcceleration * (_targetVelocity - rb.linearVelocity);
+        _velocityChange.y = 0;
+        rb.AddForce(_velocityChange, ForceMode.Acceleration);
 
         #endregion
 
@@ -153,35 +149,32 @@ public class PlayerMovement : MonoBehaviour
 
         if(wantsToJump){
             if(IsGrounded || Time.time - _lastTimeGrounded < _coyoteTime){
-                Debug.Log("Grounded");
                 // StartCoroutine(Test(transform.position.y));
                 // isJumping = true;
                 wantsToJump = false;
-                _velocityChange.x = rb.linearVelocity.x;
-                _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
-                rb.AddForce(_velocityChange, ForceMode.VelocityChange);
+                // _velocityChange.x = rb.linearVelocity.x;
+                // _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
+                // rb.linearVelocity = new Vector3(rb.linearVelocity.x, playerStats.jumpStartSpeed - rb.linearVelocity.y, rb.linearVelocity.z);
+                rb.AddForce(_splineProjector.result.up*(playerStats.jumpStartSpeed - rb.linearVelocity.y), ForceMode.VelocityChange);
             } else if(IsFront){
-                Debug.Log("Front");
                 wantsToJump = false;
-                _velocityChange.x = _leftVelocity.x;
-                _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
-                rb.AddForce(_velocityChange, ForceMode.VelocityChange);
+                // _velocityChange.x = -_splineProjector.result.forward.x * playerStats.horizontalMaxRunningSpeed;
+                // _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
+                // rb.linearVelocity = new Vector3(rb.linearVelocity.x, playerStats.jumpStartSpeed - rb.linearVelocity.y, rb.linearVelocity.z);
+                rb.AddForce((_splineProjector.result.up * (playerStats.jumpStartSpeed - rb.linearVelocity.y)) - (_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed), ForceMode.VelocityChange);
             } else if(IsBack){
-                Debug.Log("Back");
                 wantsToJump = false;
-                _velocityChange.x = _rightVelocity.x;
-                _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
-                rb.AddForce(_velocityChange, ForceMode.VelocityChange);
+                // _velocityChange.x = _splineProjector.result.forward.x * playerStats.horizontalMaxRunningSpeed;
+                // _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
+                // rb.linearVelocity = new Vector3(rb.linearVelocity.x, playerStats.jumpStartSpeed - rb.linearVelocity.y, rb.linearVelocity.z);
+                rb.AddForce((_splineProjector.result.up * (playerStats.jumpStartSpeed - rb.linearVelocity.y)) + (_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed), ForceMode.VelocityChange);
             }
         } else {
             _velocityChange.y = 0;
         }
-
         
         #endregion
 
-        rb.AddForce(_velocityChange, ForceMode.Acceleration);
-        // rb.linearVelocity += _velocityChange;
         spriteRenderer.flipX = rb.linearVelocity.x < 0;
     }
     IEnumerator Test(float start){
@@ -207,7 +200,5 @@ public class PlayerMovement : MonoBehaviour
         Gizmos.DrawWireCube(_checks.groundCheck.position, _checks.groundCheckSize);
         Gizmos.DrawWireCube(_checks.frontCheck.position, _checks.frontCheckSize);
         Gizmos.DrawWireCube(_checks.backCheck.position, _checks.backCheckSize);
-
-        Gizmos.DrawLine(transform.position, transform.position + _splineProjector.result.forward*2);
     }
 }
