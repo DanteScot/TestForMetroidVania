@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using Dreamteck.Splines;
 using UnityEngine;
@@ -52,47 +51,34 @@ struct PlayerStats{
 public class PlayerMovement : MonoBehaviour
 {
     #region Required Variables
+    // Variabili che devono essere assegnate dall'inspector o che si riferiscono a classi esterne
     [Header("References")]
     [SerializeField] private PlayerStats playerStats;
     [SerializeField] private SpriteRenderer spriteRenderer;
+    private SplineProjector _splineProjector;
     private Rigidbody rb;
 
     [Header("Checks")]
     [SerializeField] private Checks _checks;
 
-
-    [Header("Speed multiplier")]
-    [SerializeField] private float _speedMultiplier;
-
-
-
     [Header("Assist")]
     [SerializeField] private float _coyoteTime = 0.1f;
     [SerializeField] private float _jumpBufferTime = 0.1f;
-
-    [Header("Debug")]
-    public Vector3 _velocity;
-
-    private SplineProjector _splineProjector;
     #endregion
 
-
     #region Class Variables
+    // Variabili necessarie per il corretto funzionamento della classe
     private Vector2 moveInput;
-
     private bool wantsToJump;
-    private bool isJumping;
     private float _lastTimeGrounded;
     #endregion
 
-    // System.Diagnostics.Stopwatch sw = new ();
-
     #region Cached Variables
+    // Sono variabili che vengono salvate solo per evitare di appesantire il Garbage Collector
     Vector3 _targetVelocity;
     Vector3 _velocityChange;
     Vector3 _zeroVelocity;
-    // Vector3 _rightVelocity;
-    // Vector3 _leftVelocity;
+    Vector3 _forewardTimesSpeed;
     #endregion
 
     private bool IsGrounded { get => Physics.CheckBox(_checks.groundCheck.position, _checks.groundCheckSize, Quaternion.identity, _checks.groundLayer); }
@@ -113,30 +99,35 @@ public class PlayerMovement : MonoBehaviour
 
     private void Start() {
         _zeroVelocity = Vector3.zero;
-        // _rightVelocity = -_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed;
-        // _leftVelocity = _splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed;
 
         playerStats.Recalculate();
         _checks.CorrectHalfSize();
 
         InputManager.Instance.OnMove += (move) => moveInput = move;
         InputManager.Instance.OnJump += () => StartCoroutine(Jump());
-        
-        StartCoroutine(CustomDebug());
-    }
-
-    IEnumerator CustomDebug(){
-        while(true){
-            _velocity = new Vector3(rb.linearVelocity.x, rb.linearVelocity.y, rb.linearVelocity.z);
-            yield return null;
-        }
     }
 
     void FixedUpdate(){
+        #region Variables
+
+        if(IsGrounded) _lastTimeGrounded = Time.time;
+
+        _forewardTimesSpeed = _splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed;
+
+        #endregion
+
+
         #region Horizontal Movement
 
-        _targetVelocity = moveInput.x > 0 ? _splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed :
-                         moveInput.x < 0 ? -_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed : _zeroVelocity;
+        if(moveInput.x > 0){
+            _targetVelocity = _forewardTimesSpeed;
+            spriteRenderer.flipX = false;
+        }
+        else if(moveInput.x < 0){
+            _targetVelocity = -_forewardTimesSpeed;
+            spriteRenderer.flipX = true;
+        }
+        else _targetVelocity = _zeroVelocity;
 
         _velocityChange = playerStats.horizontalAcceleration * (_targetVelocity - rb.linearVelocity);
         _velocityChange.y = 0;
@@ -148,44 +139,21 @@ public class PlayerMovement : MonoBehaviour
         #region Vertical Movement
 
         if(wantsToJump){
-            if(IsGrounded || Time.time - _lastTimeGrounded < _coyoteTime){
-                // StartCoroutine(Test(transform.position.y));
-                // isJumping = true;
+            if(Time.time - _lastTimeGrounded < _coyoteTime){
                 wantsToJump = false;
-                // _velocityChange.x = rb.linearVelocity.x;
-                // _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
-                // rb.linearVelocity = new Vector3(rb.linearVelocity.x, playerStats.jumpStartSpeed - rb.linearVelocity.y, rb.linearVelocity.z);
-                rb.AddForce(_splineProjector.result.up*(playerStats.jumpStartSpeed - rb.linearVelocity.y), ForceMode.VelocityChange);
+                rb.AddForce(_splineProjector.result.up * (playerStats.jumpStartSpeed - rb.linearVelocity.y), ForceMode.VelocityChange);
             } else if(IsFront){
                 wantsToJump = false;
-                // _velocityChange.x = -_splineProjector.result.forward.x * playerStats.horizontalMaxRunningSpeed;
-                // _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
-                // rb.linearVelocity = new Vector3(rb.linearVelocity.x, playerStats.jumpStartSpeed - rb.linearVelocity.y, rb.linearVelocity.z);
-                rb.AddForce((_splineProjector.result.up * (playerStats.jumpStartSpeed - rb.linearVelocity.y)) - (_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed), ForceMode.VelocityChange);
+                rb.AddForce((_splineProjector.result.up * (playerStats.jumpStartSpeed - rb.linearVelocity.y)) - _forewardTimesSpeed, ForceMode.VelocityChange);
             } else if(IsBack){
                 wantsToJump = false;
-                // _velocityChange.x = _splineProjector.result.forward.x * playerStats.horizontalMaxRunningSpeed;
-                // _velocityChange.y = playerStats.jumpStartSpeed - rb.linearVelocity.y;
-                // rb.linearVelocity = new Vector3(rb.linearVelocity.x, playerStats.jumpStartSpeed - rb.linearVelocity.y, rb.linearVelocity.z);
-                rb.AddForce((_splineProjector.result.up * (playerStats.jumpStartSpeed - rb.linearVelocity.y)) + (_splineProjector.result.forward * playerStats.horizontalMaxRunningSpeed), ForceMode.VelocityChange);
+                rb.AddForce((_splineProjector.result.up * (playerStats.jumpStartSpeed - rb.linearVelocity.y)) + _forewardTimesSpeed, ForceMode.VelocityChange);
             }
         } else {
             _velocityChange.y = 0;
         }
         
         #endregion
-
-        spriteRenderer.flipX = rb.linearVelocity.x < 0;
-    }
-    IEnumerator Test(float start){
-        float max=start;
-        yield return new WaitUntil(() => isJumping);
-        while(true){
-            if(transform.position.y > max) max = transform.position.y;
-            if(!isJumping) break;
-            yield return null;
-        }
-        Debug.Log("height: "+(max-start));
     }
 
     IEnumerator Jump(){
