@@ -9,6 +9,7 @@ public class InputManager : MonoBehaviour
 
     public event Action<Vector2> OnMove;
     public event Action OnJump;
+    public event Action<Vector2> OnRightStick;
 
     private void Awake()
     {
@@ -29,6 +30,9 @@ public class InputManager : MonoBehaviour
         inputActions.Player.Move.canceled += ctx => OnMove?.Invoke(Vector2.zero);
 
         inputActions.Player.Jump.performed += ctx => OnJump?.Invoke();
+
+        inputActions.Player.RightStick.performed += ctx => OnRightStick?.Invoke(ctx.ReadValue<Vector2>());
+        inputActions.Player.RightStick.canceled += ctx => OnRightStick?.Invoke(Vector2.zero);
     }
 
     private void OnEnable()

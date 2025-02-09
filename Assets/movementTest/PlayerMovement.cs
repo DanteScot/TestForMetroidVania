@@ -44,7 +44,7 @@ struct PlayerStats{
         gravity = -2*jumpHeight/(timeToJumpApex*timeToJumpApex);
         jumpStartSpeed = 2*jumpHeight/timeToJumpApex;
 
-        Physics.gravity = new Vector3(0, gravity, 0);
+        // Physics.gravity = new Vector3(0, gravity, 0);
     }
 }
 
@@ -153,6 +153,7 @@ public class PlayerMovement : MonoBehaviour
             _velocityChange.y = 0;
         }
         
+        rb.AddForce(playerStats.gravity * _splineProjector.result.up, ForceMode.Acceleration);
         #endregion
     }
 
