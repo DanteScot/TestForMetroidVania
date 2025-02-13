@@ -153,7 +153,12 @@ public class PlayerMovement : MonoBehaviour
             _velocityChange.y = 0;
         }
         
-        rb.AddForce(playerStats.gravity * _splineProjector.result.up, ForceMode.Acceleration);
+        if(IsGrounded) {
+            rb.useGravity = true;
+        } else {
+            // rb.useGravity = false;
+            rb.AddForce(playerStats.gravity * _splineProjector.result.up, ForceMode.Acceleration);
+        }
         #endregion
     }
 
